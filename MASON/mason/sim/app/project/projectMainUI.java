@@ -1,4 +1,4 @@
-
+/* Some of the UI shown here is reused code from a different simulation in MASON that suited our purposes */
 package sim.app.project;
 
 import sim.engine.*;
@@ -14,9 +14,9 @@ public class projectMainUI extends GUIState
 
     FastValueGridPortrayal2D homePheromonePortrayal = new FastValueGridPortrayal2D("Home Pheromone");
     FastValueGridPortrayal2D foodPheromonePortrayal = new FastValueGridPortrayal2D("Food Pheromone");
-    FastValueGridPortrayal2D sitesPortrayal = new FastValueGridPortrayal2D("Site", true);  // immutable
-    FastValueGridPortrayal2D obstaclesPortrayal = new FastValueGridPortrayal2D("Obstacle", true);  // immutable
-    SparseGridPortrayal2D bugPortrayal = new SparseGridPortrayal2D();
+    FastValueGridPortrayal2D sitesPortrayal = new FastValueGridPortrayal2D("Site", true); //this makes them immutable
+    FastValueGridPortrayal2D obstaclesPortrayal = new FastValueGridPortrayal2D("Obstacle", true);  //this makes them immutable(unchanging)
+    SparseGridPortrayal2D antPortrayal = new SparseGridPortrayal2D();
                 
     public static void main(String[] args)
         {
@@ -34,13 +34,13 @@ public class projectMainUI extends GUIState
     public void setupPortrayals()
         {
         projectMain pm = (projectMain)state;
-
+        
         // tell the portrayals what to portray and how to portray them
         homePheromonePortrayal.setField(pm.toHomeGrid);
         homePheromonePortrayal.setMap(new sim.util.gui.SimpleColorMap(
                 0,
                 projectMain.maxPheromone,
-                // home pheromones are beneath all, just make them opaque
+                
                 Color.white, //new Color(0,255,0,0),
                 new Color(0,255,0,255) )
             { public double filterLevel(double level) { return Math.sqrt(Math.sqrt(level)); } } );  // map with custom level filtering
@@ -63,7 +63,7 @@ public class projectMainUI extends GUIState
                 1,
                 new Color(0,0,0,0),
                 new Color(128,64,64,255) ));
-        bugPortrayal.setField(pm.antgrid);
+        antPortrayal.setField(pm.antgrid);
             
         // reschedule the displayer
         display.reset();
@@ -82,7 +82,7 @@ public class projectMainUI extends GUIState
     public void load(SimState state)
         {
         super.load(state);
-        // we now have new grids.  Set up the portrayals to reflect that
+        
         setupPortrayals();
         }
 
@@ -91,17 +91,17 @@ public class projectMainUI extends GUIState
         super.init(c);
         
         // Make the Display2D.  We'll have it display stuff later.
-        display = new Display2D(400,400,this); // at 400x400, we've got 4x4 per array position
+        display = new Display2D(400,400,this); //400x400 display
         displayFrame = display.createFrame();
-        c.registerFrame(displayFrame);   // register the frame so it appears in the "Display" list
+        c.registerFrame(displayFrame);   // registering the frame so it appears in the "Display" list
         displayFrame.setVisible(true);
 
-        // attach the portrayals from bottom to top
+        // attach the portrayals
         display.attach(homePheromonePortrayal,"Pheromones To Home");
         display.attach(foodPheromonePortrayal,"Pheromones To Food");
         display.attach(sitesPortrayal,"Site Locations");
         display.attach(obstaclesPortrayal,"Obstacles");
-        display.attach(bugPortrayal,"Agents");
+        display.attach(antPortrayal,"Agents");
         
         // specify the backdrop color  -- what gets painted behind the displays
         display.setBackdrop(Color.white);

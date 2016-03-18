@@ -52,9 +52,28 @@ public class projectMain extends SimState
     	return updateCutDown;
     }
     
+    public double getCutDown() {
+    	return updateCutDown;
+    	
+    }
+    public void setCutDown(double val) {
+    	if (val >= 0 && val <= 1.0)
+    		updateCutDown = val;
+    }
 
-    public double getReward() { return reward; }
-    public void setReward(double val) {if (val >= 0) reward = val; }
+    
+    public double getReward() {
+    	return reward;
+    	
+    }
+    
+    public void setReward(double val) {
+    	if (val >= 0) 
+    		reward = val; 
+    	
+    	}
+    
+    // create food site, home site, obstacles
     public IntGrid2D sites = new IntGrid2D(gridWidth, gridHeight,0);
     public DoubleGrid2D toFoodGrid = new DoubleGrid2D(gridWidth, gridHeight,0);
     public DoubleGrid2D toHomeGrid = new DoubleGrid2D(gridWidth, gridHeight,0);
@@ -68,13 +87,13 @@ public class projectMain extends SimState
 
     public void start()
         {
-        super.start();
+        super.start(); //handles starting
         sites = new IntGrid2D(gridWidth, gridHeight,0);
         toFoodGrid = new DoubleGrid2D(gridWidth, gridHeight,0);
         toHomeGrid = new DoubleGrid2D(gridWidth, gridHeight,0);
         antgrid = new SparseGrid2D(gridWidth, gridHeight);
         obstacles = new IntGrid2D(gridWidth, gridHeight, 0);
-
+        //places food and home sites
         for( int x = homeXValMin ; x <= homeXValMax ; x++ )
             for( int y = homeYValMin ; y <= homeYValMax ; y++ )
                 sites.field[x][y] = HOME;
@@ -82,8 +101,9 @@ public class projectMain extends SimState
             for( int y = foodYValMin ; y <= foodYValMax ; y++ )
                 sites.field[x][y] = FOOD;
         
-
         
+
+        //places obstacles
         for( int x = 0 ; x < gridWidth ; x++ )
             for( int y = 0 ; y < gridHeight ; y++ )
                 {
@@ -95,19 +115,19 @@ public class projectMain extends SimState
         
                 if( ((y-30)*0.707+(x-45)*0.707)*((y-30)*0.707+(x-45)*0.707)/750+
                     ((y-30)*0.707-(x-45)*0.707)*((y-30)*0.707-(x-45)*0.707)/36 <= 1 )
-                    obstacles.field[x][y] = 1;
+                    obstacles.field[x][y] = 1; //this code for obstacles comes from another simulation, it suited our purposes and so we have reused it within our simulation.
                 }
         
         
-
+        //creates the specified number of ants
         for(int x = 0; x < numAnts; x++)	{
             
             projectAnt ant = new projectAnt(reward);
             antgrid.setObjectLocation(ant,(homeXValMax+homeXValMin)/2,(homeYValMax+homeYValMin)/2);
-            schedule.scheduleRepeating(Schedule.EPOCH + x, 0, ant, 1);
+            schedule.scheduleRepeating(Schedule.EPOCH + x, 0, ant, 1); //schedules the creation of ants.
             }
         
-    
+    //schedules our pheromone to evaporate
     schedule.scheduleRepeating(Schedule.EPOCH,1, new Steppable()
     {
     public void step(SimState state) { toFoodGrid.multiply(evaporationConstant); toHomeGrid.multiply(evaporationConstant); }
