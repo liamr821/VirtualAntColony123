@@ -1,4 +1,5 @@
 
+
 package sim.app.project;
 
 import sim.field.grid.*;
@@ -10,23 +11,27 @@ import java.awt.*;
 
 public class projectAnt extends OvalPortrayal2D implements Steppable
     {
-
+    private static final long serialVersionUID = 1;
 
     public boolean getHasFoodItem() { return hasFoodItem; }
     public void setHasFoodItem(boolean val) { hasFoodItem = val; }
     public boolean hasFoodItem = false;
+    public boolean hasTrashItem = false;
     double reward = 0;
         
     int x;
     int y;
+    static int foodStores;
         
     Int2D last;
         
     public projectAnt(double initialReward) { reward = initialReward; }
         
         
+    // at present we have only one algorithm: value iteration.  I might
+    // revise this and add our alternate (TD) algorithm.  See the papers.
         
-        
+      
     public void depositPheromone( final SimState state)
         {
         final projectMain pm = (projectMain)state;
@@ -34,44 +39,35 @@ public class projectAnt extends OvalPortrayal2D implements Steppable
         Int2D location = pm.antgrid.getObjectLocation(this);
         int x = location.x;
         int y = location.y;
-                
-
             
             if (hasFoodItem)  // deposit food pheromone
                 {
-                double max = pm.toFoodGrid.field[x][y];
-                for(int dx = -1; dx < 2; dx++)
-                    for(int dy = -1; dy < 2; dy++)
-                        {
-                        int _x = dx+x;
-                        int _y = dy+y;
-                        if (_x < 0 || _y < 0 || _x >= projectMain.gridWidth || _y >= projectMain.gridHeight) continue;  // nothing to see here
-                        double m = pm.toFoodGrid.field[_x][_y] * 
-                            (dx * dy != 0 ? // diagonal corners
-                            pm.diagonalCutDown : pm.updateCutDown) +
-                            reward;
-                        if (m > max) max = m;
-                        }
-                pm.toFoodGrid.field[x][y] = max;
+            	double maximum = pm.toFoodGrid.field[x][y];
+            	for(int xgrid = -1; xgrid < 2; xgrid++) {
+            		for(int ygrid = -1; ygrid < 2; ygrid++) {
+            			if((xgrid + x == 0) || (ygrid + y == 0) || xgrid > projectMain.gridWidth || ygrid > projectMain.gridHeight) continue;
+            			double p = pm.toFoodGrid.field[(x + xgrid)][(y + ygrid)] * pm.updateCutDown + reward;
+            			if(p > maximum) maximum = p;
+            		}
+            	pm.toFoodGrid.field[x][y] = maximum;
+            	}
                 }
+
             else
                 {
-                double max = pm.toHomeGrid.field[x][y];
-                for(int dx = -1; dx < 2; dx++)
-                    for(int dy = -1; dy < 2; dy++)
-                        {
-                        int _x = dx+x;
-                        int _y = dy+y;
-                        if (_x < 0 || _y < 0 || _x >= projectMain.gridWidth || _y >= projectMain.gridHeight) continue;  // nothing to see here
-                        double m = pm.toHomeGrid.field[_x][_y] * 
-                            (dx * dy != 0 ? // diagonal corners
-                            pm.diagonalCutDown : pm.updateCutDown) +
-                            
-                            reward;
-                        if (m > max) max = m;
-                        }
-                pm.toHomeGrid.field[x][y] = max;
+            	double maximum = pm.toHomeGrid.field[x][y];
+            	for(int xgrid = -1; xgrid < 2; xgrid++) {
+            		for(int ygrid = -1; ygrid < 2; ygrid++) {
+            			int x1 = x + xgrid;
+            			int y1 = y + ygrid;
+            			if(x1 < 0 || y1 < 0 || x1 >= projectMain.gridWidth || y1 >= projectMain.gridHeight) continue;
+            			double p = pm.toHomeGrid.field[x1][y1] * pm.updateCutDown + reward;
+            			if(p > maximum) maximum = p;
+            		}
+            	}
+            	pm.toHomeGrid.field[x][y] = maximum;
                 }
+
             
         reward = 0.0;
         }
@@ -86,102 +82,88 @@ public class projectAnt extends OvalPortrayal2D implements Steppable
                 
         if (hasFoodItem)  // follow home pheromone
             {
-            double max = projectMain.IMPOSSIBLY_BAD_PHEROMONE;
-            int max_x = x;
-            int max_y = y;
-            int count = 2;
-            for(int dx = -1; dx < 2; dx++)
-                for(int dy = -1; dy < 2; dy++)
-                    {
-                    int _x = dx+x;
-                    int _y = dy+y;
-                    if ((dx == 0 && dy == 0) ||
-                        _x < 0 || _y < 0 ||
-                        _x >= projectMain.gridWidth || _y >= projectMain.gridHeight || 
-                        pm.obstacles.field[_x][_y] == 1) continue;  
-                    double m = pm.toHomeGrid.field[_x][_y];
-                    if (m > max)
-                        {
-                        count = 2;
-                        }
-                    // no else, yes m > max is repeated
-                    if (m > max || (m == max && state.random.nextBoolean(1.0 / count++)))  // this makes all "==" situations equally likely
-                        {
-                        max = m;
-                        max_x = _x;
-                        max_y = _y;
-                        }
-                    }
-            if (max == 0 && last != null)  // nowhere to go!  Maybe go straight
-            {
-            if (state.random.nextBoolean(pm.momentumProbability))
-                {
-                int xm = x + (x - last.x);
-                int ym = y + (y - last.y);
-                if (xm >= 0 && xm < projectMain.gridWidth && ym >= 0 && ym < projectMain.gridHeight && pm.obstacles.field[xm][ym] == 0)
-                    { max_x = xm; max_y = ym; }
-                }
-            }
-            pm.antgrid.setObjectLocation(this, new Int2D(max_x, max_y));
-            if (pm.sites.field[max_x][max_y] == projectMain.HOME)  // reward me next time!  And change my status
+        	double best = projectMain.badPheromone;
+        	int best_x = x;
+        	int best_y = y;
+        	int decisionVariable = 2;
+        	for(int xgrid = -1; xgrid < 2; xgrid++) {
+        		for(int ygrid = -1; ygrid < 2; ygrid++) {
+        			if((xgrid == 0 && ygrid == 0) || (xgrid + x < 0) || (ygrid + y < 0) || (xgrid + x >= projectMain.gridWidth) 
+        					|| (ygrid + y >= projectMain.gridHeight) || pm.obstacles.field[(xgrid + x)][(ygrid + y)] == 1) {
+        				continue;
+        			}
+        			double p = pm.toHomeGrid.field[(xgrid + x)][(ygrid + y)];
+        			if(p > best) {
+        				decisionVariable = 2; //makes it so decisions are 50/50
+        			}
+        			if(p > best || (p== best && state.random.nextBoolean(1.0 / decisionVariable++))) {
+        				best = p;
+        				best_x = (xgrid + x);
+        				best_y = (ygrid + y);
+        			}
+        		}
+        	}
+
+//random and momentum here
+            pm.antgrid.setObjectLocation(this, new Int2D(best_x, best_y));
+            if (pm.sites.field[best_x][best_y] == projectMain.HOME)  // reward me next time!  And change my status
                 { 
             	reward = pm.reward ;
             	hasFoodItem = ! hasFoodItem;
             	}
             }
+
+
+    	
         else
             {
-            double max = projectMain.IMPOSSIBLY_BAD_PHEROMONE;
-            int max_x = x;
-            int max_y = y;
-            int count = 2;
-            for(int dx = -1; dx < 2; dx++)
-                for(int dy = -1; dy < 2; dy++)
-                    {
-                    int _x = dx+x;
-                    int _y = dy+y;
-                    if ((dx == 0 && dy == 0) ||
-                        _x < 0 || _y < 0 ||
-                        _x >= projectMain.gridWidth || _y >= projectMain.gridHeight || 
-                        pm.obstacles.field[_x][_y] == 1) continue;  
-                    double m = pm.toFoodGrid.field[_x][_y];
-                    if (m > max)
-                        {
-                        count = 2;
-                        }
-                    // no else, yes m > max is repeated
-                    if (m > max || (m == max && state.random.nextBoolean(1.0 / count++)))  // this little magic makes all "==" situations equally likely
-                        {
-                        max = m;
-                        max_x = _x;
-                        max_y = _y;
-                        }
+        	double best = projectMain.badPheromone;
+        	int best_x = x;
+        	int best_y = y;
+        	int decisionVariable = 2;
+        	for(int xgrid = -1; xgrid < 2; xgrid++) {
+        		for(int ygrid = -1; ygrid < 2; ygrid++) {
+        			if((xgrid == 0 && ygrid == 0) || (xgrid + x < 0) || (ygrid + y < 0) || (xgrid + x >= projectMain.gridWidth) 
+        					|| (ygrid + y >= projectMain.gridHeight) || pm.obstacles.field[(xgrid + x)][(ygrid + y)] == 1) {
+        				continue;
+        			}
+        			double p = pm.toFoodGrid.field[(xgrid + x)][(ygrid + y)];
+        			if(p > best) {
+        				decisionVariable = 2; //makes it so decisions are 50/50
+        			}
+        			if(p > best || (p== best && state.random.nextBoolean(1.0 / decisionVariable++))) {
+        				best = p;
+        				best_x = (xgrid + x);
+        				best_y = (ygrid + y);
+        			}
+        		}
+        	}
+            if(best == 0 && last != null) {
+                if(state.random.nextBoolean(pm.momentumProbability)) {
+                    int nextX = x + (x- last.x);
+                    int nextY = y + (y - last.y);
+                    if(nextX >= 0 && nextY >= 0 && nextX < projectMain.gridWidth && nextY < projectMain.gridHeight && pm.obstacles.field[nextX][nextY] == 0) {
+                        best_x = nextX;
+                        best_y = nextY;
                     }
-            if  (max == 0 && last != null)  // if there's nowhere to go, maybe go straight
-            {
-            if (state.random.nextBoolean(pm.momentumProbability))
-                {
-                int xm = x + (x - last.x);
-                int ym = y + (y - last.y);
-                if (xm >= 0 && xm < projectMain.gridWidth && ym >= 0 && ym < projectMain.gridHeight && pm.obstacles.field[xm][ym] == 0)
-                    { max_x = xm; max_y = ym; }
                 }
             }
-            
-            pm.antgrid.setObjectLocation(this, new Int2D(max_x, max_y));
-            if (pm.sites.field[max_x][max_y] == projectMain.FOOD || pm.sites.field[max_x][max_y] == projectMain.FOOD2 )  // reward me next time!  And change my status
+
+
+            pm.antgrid.setObjectLocation(this, new Int2D(best_x, best_y));
+            if (pm.sites.field[best_x][best_y] == projectMain.FOOD)  // reward me next time!  And change my status
                 { reward = pm.reward; hasFoodItem = ! hasFoodItem; }
             }
         last = location;
         }
-
+    
     public void step( final SimState state )
         {
         depositPheromone(state);
         act(state);
         }
 
-
+    // a few tweaks by Sean
     private Color noFoodColor = Color.black;
     private Color foodColor = Color.red;
     public final void draw(Object object, Graphics2D graphics, DrawInfo2D info)
@@ -191,7 +173,7 @@ public class projectAnt extends OvalPortrayal2D implements Steppable
         else
             graphics.setColor( noFoodColor );
 
-
+        // this code was taken from OvalPortrayal2D
         int x = (int)(info.draw.x - info.draw.width / 2.0);
         int y = (int)(info.draw.y - info.draw.height / 2.0);
         int width = (int)(info.draw.width);

@@ -51,7 +51,7 @@ public class projectMain extends SimState
     public double getCutDown(double val)	{
     	return updateCutDown;
     }
-    }
+    
 
     public double getReward() { return reward; }
     public void setReward(double val) {if (val >= 0) reward = val; }
